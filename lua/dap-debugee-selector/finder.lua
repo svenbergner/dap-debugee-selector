@@ -9,27 +9,17 @@ local config = require('telescope.config').values
 local log = require('plenary.log'):new()
 -- log.level = 'debug'
 
+local cfg = require('dap-debugee-selector.config')
 local state = require('dap-debugee-selector.state')
 local dap_helper = require('dap-debugee-selector.dap')
 
 local M = {}
 
---- Patterns used to exclude entries from the executable finder
-local EXCLUDE_PATTERNS = {
-   'Frameworks',
-   'plugins ',
-   'CMakeFiles',
-   '.dylib',
-   'jdk/bin',
-   'jdk/lib',
-   'Resources',
-}
-
---- Returns true if the entry matches any of the exclude patterns
+--- Returns true if the entry matches any of the configured exclude patterns
 --- @param entry string: The file path to check
 --- @return boolean
 local function is_excluded(entry)
-   for _, pattern in ipairs(EXCLUDE_PATTERNS) do
+   for _, pattern in ipairs(cfg.options.exclude_patterns) do
       if string.find(entry, pattern) then
          return true
       end

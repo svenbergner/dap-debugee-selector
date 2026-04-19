@@ -1,3 +1,4 @@
+local cfg = require('dap-debugee-selector.config')
 local state = require('dap-debugee-selector.state')
 local dap_helper = require('dap-debugee-selector.dap')
 local finder = require('dap-debugee-selector.finder')
@@ -44,6 +45,9 @@ end
 
 --- Register the extension
 return require('telescope').register_extension({
+   setup = function(user_opts)
+      cfg.setup(user_opts)
+   end,
    exports = {
       show_debugee_candidates = finder.show_debugee_candidates,
       selectSearchPathRoot = function(opts)

@@ -38,6 +38,24 @@ Using [lazy.nvim](https://github.com/folke/lazy.nvim):
     "nvim-lua/plenary.nvim",
   },
   config = function()
+    require("telescope").setup({
+      extensions = {
+        debugee_selector = {
+          -- Patterns used to hide executables from the picker.
+          -- Any executable whose path contains one of these substrings is excluded.
+          -- Omit this key to keep the built-in defaults.
+          exclude_patterns = {
+            "Frameworks",
+            "plugins ",   -- trailing space is intentional
+            "CMakeFiles",
+            ".dylib",
+            "jdk/bin",
+            "jdk/lib",
+            "Resources",
+          },
+        },
+      },
+    })
     require("telescope").load_extension("debugee_selector")
   end,
 }
@@ -101,7 +119,9 @@ local args      = ext.get_last_debugee_args()  -- argument string
 
 ## Argument Picker
 
-The argument picker shows the full history of previously used argument strings for the selected executable. It works as a combined list + edit field in a single step:
+The argument picker shows the full history of previously used argument strings
+for the selected executable. It works as a combined list + edit field in a
+single step:
 
 | Key | Action |
 |-----|--------|
@@ -122,7 +142,11 @@ The argument picker shows the full history of previously used argument strings f
 
 ## Excluded File Patterns
 
-The executable finder automatically hides files whose paths match any of the following patterns to reduce noise:
+The executable finder automatically hides files whose paths match any of the
+configured exclude patterns. You can override them via the `exclude_patterns`
+option in your `telescope.setup()` call (see [Installation](#installation)).
+
+The built-in defaults are:
 
 - `Frameworks`
 - `plugins ` (with trailing space)
