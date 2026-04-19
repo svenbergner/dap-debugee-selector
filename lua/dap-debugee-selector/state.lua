@@ -10,7 +10,31 @@ M.data = {
    last_selected_index = 1,
    last_debugee_args = '',
    last_program = '',
+   --- args_history is keyed by the executable path, each value is a list of
+   --- previously used argument strings (newest first, no duplicates)
+   args_history = {},
 }
+
+--- Adds an argument string to the history for the given program.
+--- Duplicates are removed and the new entry is placed at the top.
+--- Empty strings are not stored.
+--- @param program string: The path to the debugee executable
+--- @param args_str string: The argument string to store
+function M.add_to_args_history(program, args_str)
+   if args_str == '' then
+      return
+   end
+   local history = M.data.args_history[program] or {}
+   -- Remove existing occurrence to avoid duplicates
+   for i, v in ipairs(history) do
+      if v == args_str then
+         table.remove(history, i)
+         break
+      end
+   end
+   table.insert(history, 1, args_str)
+   M.data.args_history[program] = history
+end
 
 --- Splits a space-separated argument string into a table of individual arguments
 --- @param args_str string: The argument string, e.g. "--foo bar --baz"
@@ -37,6 +61,7 @@ function M.load()
       M.data.last_selected_index = data.last_selected_index or 1
       M.data.last_debugee_args = data.last_debugee_args or ''
       M.data.last_program = data.last_program or ''
+      M.data.args_history = data.args_history or {}
    end
 end
 
@@ -57,6 +82,7 @@ function M.save()
       last_selected_index = M.data.last_selected_index,
       last_debugee_args = M.data.last_debugee_args,
       last_program = M.data.last_program,
+      args_history = M.data.args_history,
    }
    vim.fn.writefile({ vim.fn.json_encode(all_states) }, state_file)
 end

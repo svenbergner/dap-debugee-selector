@@ -248,12 +248,124 @@ function M.show_debugee_candidates(opts)
                log.debug('attach_mappings', selectedFilePath)
                actions.close(prompt_bufnr)
 
-               local args_str = vim.fn.input('Debugee arguments: ', state.data.last_debugee_args)
-               state.data.last_debugee_args = args_str
                state.data.last_program = selectedFilePath
                state.save()
 
-               dap_helper.update_config(selectedFilePath, state.parse_args(args_str))
+               M.show_args_picker(selectedFilePath, function(args_str)
+                  state.data.last_debugee_args = args_str
+                  state.add_to_args_history(selectedFilePath, args_str)
+                  state.save()
+                  dap_helper.update_config(selectedFilePath, state.parse_args(args_str))
+               end)
+            end)
+            return true
+         end,
+      })
+      :find()
+end
+
+--- Opens a Telescope picker showing the args history for the given program.
+--- The prompt field acts as the edit field: navigating up/down pre-fills it
+--- with the selected entry. Enter confirms the current prompt text directly.
+--- <C-d> deletes the highlighted history entry.
+--- Calls callback(args_str) with the confirmed argument string.
+--- @param program string: The path to the debugee executable
+--- @param callback function: Called with the chosen argument string
+function M.show_args_picker(program, callback)
+   local sorters = require('telescope.sorters')
+   local history = state.data.args_history[program] or {}
+
+   -- +5 accounts for borders, separator, prompt line and padding
+   local desired_height = math.max(#history + 5, 6)
+   local max_height = math.floor(vim.o.lines * 0.8)
+
+   local opts = {
+      results_title = 'Argument History  <C-n> new  <C-d> delete',
+      prompt_title = vim.fs.basename(program),
+      default_text = history[1] or '',
+      layout_strategy = 'horizontal',
+      layout_config = {
+         width = 80,
+         height = math.min(desired_height, max_height),
+      },
+   }
+
+   --- Fills the prompt with the value of the currently selected entry.
+   --- Preserves the selection row because set_prompt triggers a re-render that
+   --- would otherwise reset it to the first entry.
+   --- A double vim.schedule ensures we run after all of Telescope's own
+   --- re-render callbacks have completed.
+   local function sync_prompt(prompt_bufnr)
+      local picker = actions_state.get_current_picker(prompt_bufnr)
+      local entry = actions_state.get_selected_entry()
+      if entry then
+         local row = picker:get_selection_row()
+         picker:set_prompt(entry.value)
+         vim.schedule(function()
+            vim.schedule(function()
+               picker:set_selection(row)
+            end)
+         end)
+      end
+   end
+
+   pickers
+      .new(opts, {
+         finder = finders.new_table({
+            results = history,
+            entry_maker = function(entry)
+               return { value = entry, display = entry, ordinal = entry }
+            end,
+         }),
+         -- Empty sorter: prompt text is used for editing only, not for filtering
+         sorter = sorters.empty(),
+         attach_mappings = function(prompt_bufnr, map)
+            -- Navigation fills the prompt with the selected entry.
+            -- vim.schedule ensures the move has settled before we read the selection.
+            local function move_and_sync(move_fn)
+               move_fn(prompt_bufnr)
+               vim.schedule(function()
+                  sync_prompt(prompt_bufnr)
+               end)
+            end
+
+            map('i', '<Down>', function() move_and_sync(actions.move_selection_next) end)
+            map('i', '<Up>',   function() move_and_sync(actions.move_selection_previous) end)
+
+            -- Clear the prompt to enter a completely new argument string
+            map('i', '<C-n>', function()
+               actions_state.get_current_picker(prompt_bufnr):set_prompt('')
+            end)
+
+            -- Delete the highlighted history entry and reopen
+            map('i', '<C-d>', function()
+               local selected = actions_state.get_selected_entry()
+               if selected then
+                  local prog_history = state.data.args_history[program] or {}
+                  for i, v in ipairs(prog_history) do
+                     if v == selected.value then
+                        table.remove(prog_history, i)
+                        break
+                     end
+                  end
+                  state.data.args_history[program] = prog_history
+                  state.save()
+                  actions.close(prompt_bufnr)
+                  vim.schedule(function()
+                     M.show_args_picker(program, callback)
+                  end)
+               end
+            end)
+
+            -- Confirm: use the current prompt text as the final argument string
+            actions.select_default:replace(function()
+               local args_str = actions_state.get_current_picker(prompt_bufnr):_get_prompt()
+               actions.close(prompt_bufnr)
+               if args_str ~= '' then
+                  state.add_to_args_history(program, args_str)
+                  state.save()
+               end
+               callback(args_str)
             end)
             return true
          end,

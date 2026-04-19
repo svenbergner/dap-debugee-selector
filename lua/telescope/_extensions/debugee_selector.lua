@@ -26,10 +26,12 @@ end
 
 --- Edit the debugee arguments without re-selecting the executable
 local function edit_debugee_args()
-   local args_str = vim.fn.input('Debugee arguments: ', state.data.last_debugee_args)
-   state.data.last_debugee_args = args_str
-   state.save()
-   dap_helper.update_config(state.data.last_program, state.parse_args(args_str))
+   finder.show_args_picker(state.data.last_program, function(args_str)
+      state.data.last_debugee_args = args_str
+      state.add_to_args_history(state.data.last_program, args_str)
+      state.save()
+      dap_helper.update_config(state.data.last_program, state.parse_args(args_str))
+   end)
 end
 
 local function get_last_program()
