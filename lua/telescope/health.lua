@@ -1,7 +1,7 @@
 local M = {}
 
 M.check = function()
-   vim.health.start('Debugee Selector Report')
+   vim.health.start('Dap Debugee Selector Report')
 
    -- Check required dependencies
    for _, plugin in ipairs({ 'telescope', 'dap', 'plenary' }) do
