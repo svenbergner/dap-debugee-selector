@@ -1,6 +1,6 @@
-# telescope-debugee-selector
+# dap-debugee-selector
 
-This Neovim Telescope plugin helps you finding the executable you want to use for debugging.
+This Neovim plugin helps you finding the executable you want to use for debugging.
 
 ## Warning
 
